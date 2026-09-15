@@ -1,4 +1,4 @@
-name: OpenBSD Interactive Console
+name: OpenBSD Full SSH Setup
 
 on:
   push:
@@ -8,28 +8,60 @@ jobs:
   openbsd_job:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Run OpenBSD VM
+      - name: Run OpenBSD VM with Auto Setup
         uses: vmactions/openbsd-vm@v1
         with:
-          debug-on-error: true     # الميزة الرسمية: VNC عند الفشل
+          debug-on-error: true
           run: |
             set +e
-            uname -a
 
-            # 1) ضبط كلمة مرور لـ root عشان تدخل من الكونصول
-            PASS="OpenBSD123!"
-            HASH=$(encrypt -b "$PASS")
-            usermod -p "$HASH" root
-            echo "root password set"
+            echo "🔧 إعداد OpenBSD VM..."
 
-            echo "=================================================="
-            echo "  Login: root"
-            echo "  Password: $PASS"
-            echo "  لما تخلص اكتب داخل الـ VM: touch ~/continue"
-            echo "=================================================="
+            # 1) كلمة سر لـ root
+            echo 'root:openbsd' | chpass -i
+            echo "✅ root password set: openbsd"
 
-            # 2) فشل متعمد عشان يفتح لك رابط VNC وينتظرك
+            # 2) إعداد sshd
+            echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+            echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
+            pkill -HUP sshd
+            echo "✅ SSH configured"
+
+            # 3) مفتاحك العام
+            mkdir -p /root/.ssh
+            chmod 700 /root/.ssh
+            echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKabR0ItQG3t0UFr9gk0QlL3OzkAtrfgNLkWJ9y4CWZk youssefhidour@youssefhidour-hpprobook640g1" >> /root/.ssh/authorized_keys
+            chmod 600 /root/.ssh/authorized_keys
+            echo "✅ SSH key added"
+
+            # 4) اختبار SSH داخلي
+            ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no root@127.0.0.1 exit && echo "✅ SSH test passed"
+
+            # 5) فتح النفق عبر Pinggy
+            echo "🌐 Opening tunnel..."
+            ssh -p 443 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 \
+                -R0:localhost:22 tcp@free.pinggy.io > /tmp/p.log 2>&1 &
+
+            sleep 8
+            echo ""
+            echo "###########################################"
+            echo "🔗 معلومات الاتصال SSH:"
+            cat /tmp/p.log
+            echo ""
+            echo "🌐 VNC للدخول اليدوي:"
+            echo "  (الرابط من الأعلى في الـ logs)"
+            echo ""
+            echo "🔑 بيانات الدخول:"
+            echo "  user: root"
+            echo "  password: openbsd"
+            echo ""
+            echo "📝 أوامر مفيدة:"
+            echo "  pkg_add vim htop    # تثبيت برامج"
+            echo "  uname -a            # معلومات النظام"
+            echo "  touch ~/continue    # إنهاء الجلسة"
+            echo "###########################################"
+
+            # فشل متعمد ليفتح VNC ويبقى شغال
             exit 1
