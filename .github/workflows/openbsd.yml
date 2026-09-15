@@ -1,6 +1,8 @@
 name: Run OpenBSD System with SSH Access
 
-on: [push]
+on:
+  push:
+  workflow_dispatch:   # عشان تشغله يدوي من زر Run workflow
 
 jobs:
   openbsd_job:
@@ -8,40 +10,36 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+
       - name: Run OpenBSD VM with SSH
         uses: vmactions/openbsd-vm@v1
         with:
           run: |
-            # 1. التحقق من وجود SSH (موجود افتراضياً)
-            which sshd
-            ls -la /usr/sbin/sshd
-            
-            # 2. إنشاء مفاتيح SSH إذا ما موجودة
-            if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
-              /usr/bin/ssh-keygen -A
-            fi
-            
-            # 3. تشغيل SSH daemon
-            /usr/sbin/sshd
-            
-            # 4. التحقق من أن SSH شغال
-            ps aux | grep sshd
-            
-            # 5. تحميل ngrok
-            cd /tmp
-            ftp -o ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-openbsd-amd64.tgz
-            tar xzf ngrok.tgz
-            
-            # 6. تشغيل ngrok
-            ./ngrok tcp 22 &
-            
-            # 7. انتظار وعرض الرابط
-            sleep 10
-            echo "=== SSH Connection Info ==="
-            ftp -o - http://localhost:4040/api/tunnels
-            echo "==========================="
-            
-            # 8. إبقاء الـ workflow شغال
-            echo "Waiting for SSH connection..."
-            sleep 3600
+            set +e    # مهم: لا توقف السكربت عند أي خطأ
+
+            echo "== 1) النظام =="
+            uname -a
+
+            echo "== 2) التأكد أن sshd شغال (موجود افتراضياً، لا تثبت شيء) =="
+            pgrep -x sshd >/dev/null && echo "sshd already running" || /usr/sbin/sshd
+            netstat -an | grep '\.22 '
+
+            echo "== 3) إضافة مفتاحك العام للدخول كـ root =="
+            mkdir -p /root/.ssh
+            chmod 700 /root/.ssh
+            echo "ssh-ed25519 AAAA... ضع مفتاحك العام هنا" >> /root/.ssh/authorized_keys
+            chmod 600 /root/.ssh/authorized_keys
+
+            echo "== 4) فتح نفق للخارج باستخدام ssh الأساسي (بدون ngrok) =="
+            ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 \
+                -N -R 0:localhost:22 nokey@localhost.run > /tmp/tunnel.log 2>&1 &
+            TUNNEL_PID=$!
+            sleep 8
+            cat /tmp/tunnel.log
+
+            echo "== 5) طريقة الاتصال =="
+            echo "من جهازك: ssh -p PORT root@localhost.run -i ~/.ssh/openbsd_vm"
+
+            echo "== 6) إبقاء المهمة حية =="
+            while kill -0 $TUNNEL_PID 2>/dev/null; do sleep 30; done
+            exit 0    # مهم: ننهي بنجاح دائماً
