@@ -1,14 +1,43 @@
-name: Run OpenBSD System
+name: Run OpenBSD System with SSH Access
+
 on: [push]
+
 jobs:
   openbsd_job:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-    - name: Run OpenBSD VM
-      uses: vmactions/openbsd-vm@v1
-      with:
-        run: |
-          uname -a
-          echo "its works"
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Run OpenBSD VM with SSH
+        uses: vmactions/openbsd-vm@v1
+        with:
+          run: |
+            # 1. تثبيت openssh
+            pkg_add openssh
+            
+            # 2. تشغيل SSH daemon
+            /usr/sbin/sshd
+            
+            # 3. إنشاء مستخدم وكلمة مرور (اختياري)
+            echo "user:password123" | chpass
+            
+            # 4. تحميل وتثبيت ngrok
+            cd /tmp
+            ftp https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-openbsd-amd64.tgz
+            tar xzf ngrok-v3-stable-openbsd-amd64.tgz
+            
+            # 5. تشغيل ngrok على منفذ SSH
+            ./ngrok tcp 22 &
+            
+            # 6. انتظار ngrok للحصول على الرابط
+            sleep 10
+            
+            # 7. عرض رابط الاتصال في الـ logs
+            echo "=== SSH Connection Info ==="
+            ftp -o - http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*"'
+            echo "==========================="
+            
+            # 8. إبقاء الـ workflow شغال
+            echo "Waiting for SSH connection..."
+            sleep 3600
