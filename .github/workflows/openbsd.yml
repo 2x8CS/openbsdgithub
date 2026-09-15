@@ -13,29 +13,33 @@ jobs:
         uses: vmactions/openbsd-vm@v1
         with:
           run: |
-            # 1. تثبيت openssh
-            pkg_add openssh
+            # 1. التحقق من وجود SSH (موجود افتراضياً)
+            which sshd
+            ls -la /usr/sbin/sshd
             
-            # 2. تشغيل SSH daemon
+            # 2. إنشاء مفاتيح SSH إذا ما موجودة
+            if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
+              /usr/bin/ssh-keygen -A
+            fi
+            
+            # 3. تشغيل SSH daemon
             /usr/sbin/sshd
             
-            # 3. إنشاء مستخدم وكلمة مرور (اختياري)
-            echo "user:password123" | chpass
+            # 4. التحقق من أن SSH شغال
+            ps aux | grep sshd
             
-            # 4. تحميل وتثبيت ngrok
+            # 5. تحميل ngrok
             cd /tmp
-            ftp https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-openbsd-amd64.tgz
-            tar xzf ngrok-v3-stable-openbsd-amd64.tgz
+            ftp -o ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-openbsd-amd64.tgz
+            tar xzf ngrok.tgz
             
-            # 5. تشغيل ngrok على منفذ SSH
+            # 6. تشغيل ngrok
             ./ngrok tcp 22 &
             
-            # 6. انتظار ngrok للحصول على الرابط
+            # 7. انتظار وعرض الرابط
             sleep 10
-            
-            # 7. عرض رابط الاتصال في الـ logs
             echo "=== SSH Connection Info ==="
-            ftp -o - http://localhost:4040/api/tunnels | grep -o '"public_url":"[^"]*"'
+            ftp -o - http://localhost:4040/api/tunnels
             echo "==========================="
             
             # 8. إبقاء الـ workflow شغال
