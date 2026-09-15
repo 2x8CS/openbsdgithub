@@ -2,7 +2,7 @@ name: Run OpenBSD System with SSH Access
 
 on:
   push:
-  workflow_dispatch:   # عشان تشغله يدوي من زر Run workflow
+  workflow_dispatch:
 
 jobs:
   openbsd_job:
@@ -15,31 +15,36 @@ jobs:
         uses: vmactions/openbsd-vm@v1
         with:
           run: |
-            set +e    # مهم: لا توقف السكربت عند أي خطأ
-
-            echo "== 1) النظام =="
+            set +e
             uname -a
 
-            echo "== 2) التأكد أن sshd شغال (موجود افتراضياً، لا تثبت شيء) =="
-            pgrep -x sshd >/dev/null && echo "sshd already running" || /usr/sbin/sshd
-            netstat -an | grep '\.22 '
+            # sshd موجود افتراضياً - لا تحاول تشغيله مرة ثانية
+            pgrep -x sshd >/dev/null && echo "sshd OK" || /usr/sbin/sshd
 
-            echo "== 3) إضافة مفتاحك العام للدخول كـ root =="
-            mkdir -p /root/.ssh
-            chmod 700 /root/.ssh
-            echo "ssh-ed25519 AAAA... ضع مفتاحك العام هنا" >> /root/.ssh/authorized_keys
+            # مفتاحك الاحتياطي
+            mkdir -p /root/.ssh && chmod 700 /root/.ssh
+            echo "ssh-ed25519 AAAA... مفتاحك العام هنا" >> /root/.ssh/authorized_keys
             chmod 600 /root/.ssh/authorized_keys
 
-            echo "== 4) فتح نفق للخارج باستخدام ssh الأساسي (بدون ngrok) =="
-            ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 \
-                -N -R 0:localhost:22 nokey@localhost.run > /tmp/tunnel.log 2>&1 &
-            TUNNEL_PID=$!
-            sleep 8
-            cat /tmp/tunnel.log
-
-            echo "== 5) طريقة الاتصال =="
-            echo "من جهازك: ssh -p PORT root@localhost.run -i ~/.ssh/openbsd_vm"
-
-            echo "== 6) إبقاء المهمة حية =="
-            while kill -0 $TUNNEL_PID 2>/dev/null; do sleep 30; done
-            exit 0    # مهم: ننهي بنجاح دائماً
+            echo "== الخطة أ: tmate =="
+            pkg_add tmate
+            if command -v tmate >/dev/null; then
+              tmate -S /tmp/tmate new-session -d
+              tmate -S /tmp/tmate wait tmate-ready
+              echo "=============================================="
+              echo "انسخ هذا الأمر والصقه في طرفيتك:"
+              tmate -S /tmp/tmate display -p '#{tmate_ssh}'
+              echo "أو افتح المتصفح على:"
+              tmate -S /tmp/tmate display -p '#{tmate_web}'
+              echo "=============================================="
+              # المهمة تعيش ما دامت جلسة tmate مفتوحة
+              while pgrep -x tmate >/dev/null; do sleep 30; done
+            else
+              echo "== الخطة ب: serveo =="
+              ssh -o StrictHostKeyChecking=no -R 2222:localhost:22 serveo.net > /tmp/t.log 2>&1 &
+              sleep 8
+              cat /tmp/t.log
+              echo "الاتصال: ssh -p 2222 root@serveo.net -i ~/.ssh/openbsd_vm"
+              while pgrep -f 'serveo.net' >/dev/null; do sleep 30; done
+            fi
+            exit 0
