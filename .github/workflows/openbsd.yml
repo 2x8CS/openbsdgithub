@@ -16,14 +16,12 @@ jobs:
           debug-on-error: true
           run: |
             set +e
-
             echo "🔧 إعداد OpenBSD VM..."
 
-            # 1) كلمة سر لـ root
-            echo 'root:openbsd' | chpass -i
-            echo "✅ root password set: openbsd"
+            # 1) كلمة السر الافتراضية: openbsd (من الصورة الأصلية - ما نحتاج نغيرها)
+            echo "✅ root password: openbsd (افتراضية)"
 
-            # 2) إعداد sshd
+            # 2) إعداد sshd للسماح بـ root
             echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
             echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
             pkill -HUP sshd
@@ -32,36 +30,45 @@ jobs:
             # 3) مفتاحك العام
             mkdir -p /root/.ssh
             chmod 700 /root/.ssh
-            echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKabR0ItQG3t0UFr9gk0QlL3OzkAtrfgNLkWJ9y4CWZk youssefhidour@youssefhidour-hpprobook640g1" >> /root/.ssh/authorized_keys
+            echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKabR0ItQG3t0UFr9gk0QlL3OzkAtrfgNLkWJ9y4CWZk youssefhidour@youssefhidour-hpprobook640g1" > /root/.ssh/authorized_keys
             chmod 600 /root/.ssh/authorized_keys
             echo "✅ SSH key added"
 
-            # 4) اختبار SSH داخلي
-            ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no root@127.0.0.1 exit && echo "✅ SSH test passed"
+            # 4) اختبار SSH داخلي (BatchMode يمنع التعليق)
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes root@127.0.0.1 exit 2>/dev/null
+            echo "✅ SSH internal test done"
 
-            # 5) فتح النفق عبر Pinggy
-            echo "🌐 Opening tunnel..."
-            ssh -p 443 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 \
-                -R0:localhost:22 tcp@free.pinggy.io > /tmp/p.log 2>&1 &
+            # 5) فتح النفق عبر Pinggy (sleep 15 بدلاً من 8)
+            echo "🌐 Opening tunnel via Pinggy..."
+            ssh -p 443 \
+                -o StrictHostKeyChecking=no \
+                -o UserKnownHostsFile=/dev/null \
+                -o ServerAliveInterval=30 \
+                -o ServerAliveCountMax=3 \
+                -R0:localhost:22 \
+                tcp@free.pinggy.io > /tmp/p.log 2>&1 &
+            TUNNEL_PID=$!
 
-            sleep 8
+            sleep 15
             echo ""
             echo "###########################################"
             echo "🔗 معلومات الاتصال SSH:"
             cat /tmp/p.log
             echo ""
-            echo "🌐 VNC للدخول اليدوي:"
-            echo "  (الرابط من الأعلى في الـ logs)"
+            echo "🌐 VNC للدخول اليدوي (الرابط من الأعلى في الـ logs)"
             echo ""
-            echo "🔑 بيانات الدخول:"
-            echo "  user: root"
+            echo "🔑 بيانات الدخول عبر VNC:"
+            echo "  login: root"
             echo "  password: openbsd"
             echo ""
+            echo "💻 للدخول عبر SSH من جهازك:"
+            echo "  ssh -p PORT root@HOST.free.pinggy.io"
+            echo ""
             echo "📝 أوامر مفيدة:"
-            echo "  pkg_add vim htop    # تثبيت برامج"
-            echo "  uname -a            # معلومات النظام"
+            echo "  pkg_add vim htop"
             echo "  touch ~/continue    # إنهاء الجلسة"
             echo "###########################################"
 
-            # فشل متعمد ليفتح VNC ويبقى شغال
+            # إبقاء النفق حي
+            wait $TUNNEL_PID 2>/dev/null
             exit 1
