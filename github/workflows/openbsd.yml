@@ -1,0 +1,14 @@
+name: Run OpenBSD System
+on: [push]
+jobs:
+  openbsd_job:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: Run OpenBSD VM
+      uses: vmactions/openbsd-vm@v1
+      with:
+        run: |
+          uname -a
+          echo "its works"
