@@ -5,19 +5,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  openbsd_job:
+  desktop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Install QEMU
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-system-x86 qemu-utils ovmf
+          sudo chmod 666 /dev/kvm || true
 
-      - name: Run OpenBSD VM with Desktop
-        uses: vmactions/openbsd-vm@v1
-        with:
-          release: "7.9-xfce"        # ← هنا السحر: صورة بواجهة رسومية
-          debug-on-error: true
-          run: |
-            echo "🖥️ Desktop VM ready!"
-            echo "افتح رابط VNC من فوق"
-            echo "login: root"
-            echo "password: openbsd"
-            exit 1
+      - name: Boot OpenBSD 7.9 XFCE with remote VNC
+        run: |
+          curl -Lo anyvm.py https://github.com/anyvm-org/anyvm/releases/download/v0.6.5/anyvm.py
+          python3 anyvm.py --os openbsd --release 7.9-xfce --mem 6144 -d --remote-vnc
+
+      - name: Keep alive (افتح VNC واستمتع)
+        run: |
+          echo "الـ VM شغالة — افتح رابط VNC من الخطوة السابقة"
+          echo "لإنهاء الجلسة: Cancel workflow من صفحة الـ run"
+          for i in $(seq 1 290); do sleep 60; done
