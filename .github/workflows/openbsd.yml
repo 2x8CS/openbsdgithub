@@ -15,9 +15,37 @@ jobs:
         with:
           debug-on-error: true
           run: |
-            echo "الـ VM جاهزة!"
-            echo "بيانات الدخول:"
-            echo "  login: root"
-            echo "  password: openbsd"
-            echo "عند الانتهاء اكتب: touch ~/continue"
+            set +e
+            echo "🔧 إعداد VM تلقائياً..."
+
+            # 1) تثبيت nano
+            pkg_add nano && echo "✅ nano مثبت"
+
+            # 2) إعداد مجلد SSH
+            mkdir -p /root/.ssh
+            chmod 700 /root/.ssh
+
+            # 3) إضافة مفتاحك العام
+            echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKabR0ItQG3t0UFr9gk0QlL3OzkAtrfgNLkWJ9y4CWZk youssefhidour@youssefhidour-hpprobook640g1" > /root/.ssh/authorized_keys
+            chmod 600 /root/.ssh/authorized_keys
+            echo "✅ مفتاح SSH مضاف"
+
+            # 4) السماح بـ root login عبر SSH
+            echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+            echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
+            pkill -HUP sshd
+            echo "✅ SSH مهيّأ"
+
+            # 5) رسالة ترحيب في الـ logs
+            echo ""
+            echo "###########################################"
+            echo "🎉 كل شيء جاهز تلقائياً!"
+            echo ""
+            echo "ادخل VNC ثم نفّذ هذا الأمر فقط:"
+            echo "ssh -p 443 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R0:localhost:22 tcp@free.pinggy.io"
+            echo ""
+            echo "ثم من جهازك HP:"
+            echo "ssh -p PORT root@HOST"
+            echo "###########################################"
+
             exit 1
