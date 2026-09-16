@@ -1,4 +1,4 @@
-name: OpenBSD VM
+name: OpenBSD Desktop XFCE
 
 on:
   push:
@@ -10,14 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run OpenBSD VM
+      - name: Run OpenBSD VM with Desktop
         uses: vmactions/openbsd-vm@v1
         with:
+          release: "7.9-xfce"        # ← هنا السحر: صورة بواجهة رسومية
           debug-on-error: true
           run: |
-            echo "الـ VM جاهزة!"
-            echo "بيانات الدخول:"
-            echo "  login: root"
-            echo "  password: openbsd"
-            echo "عند الانتهاء اكتب: touch ~/continue"
+            echo "🖥️ Desktop VM ready!"
+            echo "افتح رابط VNC من فوق"
+            echo "login: root"
+            echo "password: openbsd"
             exit 1
