@@ -1,26 +1,23 @@
-name: OpenBSD Desktop XFCE
+name: OpenBSD VM
 
 on:
   push:
   workflow_dispatch:
 
 jobs:
-  desktop:
+  openbsd_job:
     runs-on: ubuntu-latest
     steps:
-      - name: Install QEMU
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq qemu-system-x86 qemu-utils ovmf
-          sudo chmod 666 /dev/kvm || true
+      - uses: actions/checkout@v4
 
-      - name: Boot OpenBSD 7.9 XFCE with remote VNC
-        run: |
-          curl -Lo anyvm.py https://github.com/anyvm-org/anyvm/releases/download/v0.6.5/anyvm.py
-          python3 anyvm.py --os openbsd --release 7.9-xfce --mem 6144 -d --remote-vnc
-
-      - name: Keep alive (افتح VNC واستمتع)
-        run: |
-          echo "الـ VM شغالة — افتح رابط VNC من الخطوة السابقة"
-          echo "لإنهاء الجلسة: Cancel workflow من صفحة الـ run"
-          for i in $(seq 1 290); do sleep 60; done
+      - name: Run OpenBSD VM
+        uses: vmactions/openbsd-vm@v1
+        with:
+          debug-on-error: true
+          run: |
+            echo "الـ VM جاهزة!"
+            echo "بيانات الدخول:"
+            echo "  login: root"
+            echo "  password: openbsd"
+            echo "عند الانتهاء اكتب: touch ~/continue"
+            exit 1
