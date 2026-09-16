@@ -33,10 +33,15 @@ jobs:
             # 4) السماح بـ root login عبر SSH
             echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
             echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config
-            pkill -HUP sshd
+            
+            # 5) إعادة تحميل sshd بدون قطع الاتصال (الطريقة الرسمية في OpenBSD)
+            rcctl reload sshd 2>/dev/null || /etc/rc.d/sshd reload 2>/dev/null
             echo "✅ SSH مهيّأ"
 
-            # 5) رسالة ترحيب في الـ logs
+            # 6) انتظار قصير عشان sshd يقرأ الإعدادات الجديدة
+            sleep 3
+
+            # 7) رسالة ترحيب
             echo ""
             echo "###########################################"
             echo "🎉 كل شيء جاهز تلقائياً!"
