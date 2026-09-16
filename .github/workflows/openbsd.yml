@@ -41,16 +41,4 @@ jobs:
             # 6) انتظار قصير عشان sshd يقرأ الإعدادات الجديدة
             sleep 3
 
-            # 7) رسالة ترحيب
-            echo ""
-            echo "###########################################"
-            echo "🎉 كل شيء جاهز تلقائياً!"
-            echo ""
-            echo "ادخل VNC ثم نفّذ هذا الأمر فقط:"
-            echo "ssh -p 443 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R0:localhost:22 tcp@free.pinggy.io"
-            echo ""
-            echo "ثم من جهازك HP:"
-            echo "ssh -p PORT root@HOST"
-            echo "###########################################"
-
             exit 1
